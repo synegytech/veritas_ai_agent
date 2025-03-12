@@ -1,0 +1,72 @@
+project_name: veritas_ai_backend
+code_type: backend
+language: python
+framework: django
+description: |
+  Generate the Django backend code for the "veritas_ai_backend" project.
+  This backend will serve as an API to interface with Google AI Studio APIs, specifically for generative AI models like Gemini Pro.
+  The backend should expose an API endpoint that:
+    - Receives text prompts from a frontend application.
+    - Uses the `genai` library to interact with Google AI Studio APIs.
+    - Sends the generated text response back to the frontend in JSON format.
+    - sample snippet ```
+                from google import genai
+
+        client = genai.Client(api_key="YOUR_API_KEY")
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents="Explain how AI works",
+        )
+
+        print(response.text)
+    ```
+
+components:
+  - name: api_endpoint
+    description: API endpoint to interact with Google AI Studio.
+    functionality:
+      - receive_prompt:
+          description: Receives text prompts from the frontend via POST requests.
+          input_format: JSON, expecting a field named 'prompt'.
+      - call_google_ai_api:
+          description: Uses the `genai` library to call Google AI Studio API (e.g., Gemini Pro).
+          api_interaction: genai
+          model_suggestion: gemini-pro # Suggesting gemini-pro as discussed previously
+          api_key_management:
+            description: API key should be securely managed using Django settings and environment variables, NOT hardcoded.
+      - send_response:
+          description: Sends the generated text response back to the frontend in JSON format.
+          output_format: JSON, containing a field named 'response' with the generated text.
+    implementation_details:
+      - use_django_rest_framework: To build API views and handle requests/responses.
+      - error_handling: Implement basic error handling for API calls and invalid requests, returning appropriate HTTP status codes and error messages in JSON.
+      - settings_configuration: Include instructions to configure `settings.py` for API key management and Django REST Framework.
+      - urls_configuration: Define URLs for the API endpoint.
+      - views_implementation: Implement API view in `views.py` to handle logic.
+
+libraries_to_include:
+  - django
+  - djangorestframework
+  - genai
+
+output_format:
+  code_files:
+    - settings.py: Include necessary configurations (API key, REST framework).
+    - urls.py: Define API endpoint URLs.
+    - views.py: Implement API view logic to interact with Google AI Studio.
+    - serializers.py (optional): If data serialization is deemed necessary for request/response.
+    - models.py (likely empty for this API focused backend but include for completeness):  Placeholder for potential future models.
+  instructions: |
+    In addition to the code files, provide clear instructions on:
+      - Setting up Django project and app.
+      - Installing required libraries.
+      - Configuring environment variables for the Google API key.
+      - Running the Django development server.
+      - Testing the API endpoint (e.g., using curl or Postman).
+
+constraints:
+  - backend_only: Generate only the Django backend code, do not include frontend code.
+  - security_best_practices: Emphasize secure API key management (environment variables).
+  - clear_comments:  Code should be well-commented for clarity.
+  - functional_code: Generated code should be functional and runnable with minimal additional configuration (assuming API key and libraries are correctly set up).

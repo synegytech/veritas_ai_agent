@@ -1,3 +1,0 @@
-name = timmy
-Email address = timmy@ai.com
-password = Letmein
