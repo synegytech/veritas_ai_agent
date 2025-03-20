@@ -4,10 +4,14 @@ Views for the AI API application.
 """
 
 import logging
+import os
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+import google.generativeai as genai
+
+from veritas_ai_backend.settings import VERITAS_AI_MODEL
 
 from .serializers import PromptSerializer, ResponseSerializer
 
@@ -27,10 +31,11 @@ class GenerateTextView(APIView):
         Request body:
             {
                 "prompt": "Text prompt to send to the AI model",
-                "model": "gemini-2.0-flash" (optional),
-                "temperature": 0.7 (optional),
-                "top_p": 0.9 (optional),
-                "max_output_tokens": 1024 (optional)
+                "model": "tunedModels/veritasai1-asmlxpf43sd9" (optional),
+                "temperature": 1.0 (optional),
+                "top_p": 0.95 (optional),
+                "top_k": 64 (optional),
+                "max_output_tokens": 8192 (optional)
             }
         """
         # Validate input data
@@ -44,66 +49,67 @@ class GenerateTextView(APIView):
         # Get prompt from validated data
         prompt = serializer.validated_data.get("prompt")
         model_name = serializer.validated_data.get(
-            "model", settings.DEFAULT_GEMINI_MODEL
+            # "model", settings.DEFAULT_GEMINI_MODEL
+            "model",
+            settings.VERITAS_AI_MODEL,
         )
 
-        # Optional parameters
-        generation_config = {}
-        for param in ["temperature", "top_p", "max_output_tokens"]:
-            if param in serializer.validated_data:
-                generation_config[param] = serializer.validated_data[param]
+        # Optional parameters for generation config
+        generation_config = {
+            "temperature": serializer.validated_data.get("temperature", 1.0),
+            "top_p": serializer.validated_data.get("top_p", 0.95),
+            "top_k": serializer.validated_data.get("top_k", 64),
+            "max_output_tokens": serializer.validated_data.get(
+                "max_output_tokens", 8192
+            ),
+            "response_mime_type": "text/plain",
+        }
 
         # Check if API key is configured
-        if not settings.GOOGLE_AI_API_KEY:
+        api_key = settings.GOOGLE_AI_API_KEY
+        if not api_key:
             return Response(
                 {"error": "Google AI API key is not configured."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         try:
-            # Import Google's genai library
-            from google import genai
+            # Configure the client with API key
+            genai.configure(api_key=api_key)
 
-            # Initialize the client with API key
-            # genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
-
-            # Create a client
-            client = genai.Client(api_key=settings.GOOGLE_AI_API_KEY)
-
-            # Generate content
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                # generation_config=generation_config if generation_config else None,
+            # Create the model
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                generation_config=generation_config,
             )
 
-            # Parse the response and prepare output
-            if hasattr(response, "text"):
-                output_data = {"response": response.text, "model": model_name}
+            # Create a chat session and send message
+            chat_session = model.start_chat(history=[])
+            response = chat_session.send_message(prompt)
 
-                # Add token counts if available
-                if hasattr(response, "usage"):
-                    usage = response.usage
-                    if hasattr(usage, "prompt_tokens"):
-                        output_data["prompt_tokens"] = usage.prompt_tokens
-                    if hasattr(usage, "completion_tokens"):
-                        output_data["completion_tokens"] = usage.completion_tokens
-                    if hasattr(usage, "total_tokens"):
-                        output_data["total_tokens"] = usage.total_tokens
+            # Prepare output data
+            output_data = {"response": response.text, "model": model_name}
 
-                # Serialize and return the response
-                response_serializer = ResponseSerializer(output_data)
-                return Response(response_serializer.data)
-            else:
-                return Response(
-                    {"error": "Failed to get text from AI model response."},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+            # Add token counts if available in the response
+            if hasattr(response, "usage"):
+                usage = response.usage
+                if hasattr(usage, "prompt_tokens"):
+                    output_data["prompt_tokens"] = usage.prompt_tokens
+                if hasattr(usage, "completion_tokens"):
+                    output_data["completion_tokens"] = usage.completion_tokens
+                if hasattr(usage, "total_tokens"):
+                    output_data["total_tokens"] = usage.total_tokens
+
+            # Serialize and return the response
+            response_serializer = ResponseSerializer(output_data)
+            return Response(response_serializer.data)
 
         except ImportError:
-            logger.error("Failed to import genai library. Make sure it's installed.")
+            logger.error(
+                "Failed to import google.generativeai library. Make sure it's installed."
+            )
             return Response(
-                {"error": "Required library 'genai' is not installed."},
+                {"error": "Required library 'google.generativeai' is not installed."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         except Exception as e:

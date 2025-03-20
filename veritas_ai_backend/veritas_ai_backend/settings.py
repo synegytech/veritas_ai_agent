@@ -138,7 +138,7 @@ REST_FRAMEWORK = {
 
 # Google AI Studio API key (from environment variable)
 GOOGLE_AI_API_KEY = os.environ.get(
-    "GOOGLE_AI_API_KEY", "AIzaSyCko4Ja_dqjirYS1crPhQ7ZJ9tj_NadRhE"
+    "GOOGLE_AI_API_KEY", "AIzaSyBqX1fXO1PAIjjhiEp6EMMcjgpMwdDqYiQ"
 )
 
 
@@ -147,3 +147,8 @@ GOOGLE_AI_API_KEY = os.environ.get(
 
 # Default model for Gemini
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+
+# The veritas model name
+# VERITAS_AI_MODEL = " tunedModels/veritasai1-asmlxpf43sd9"
+
+VERITAS_AI_MODEL = "tunedModels/veritasai1-asmlxpf43sd9"
