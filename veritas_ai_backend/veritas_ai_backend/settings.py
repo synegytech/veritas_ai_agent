@@ -151,4 +151,4 @@ DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 # The veritas model name
 # VERITAS_AI_MODEL = " tunedModels/veritasai1-asmlxpf43sd9"
 
-VERITAS_AI_MODEL = "tunedModels/veritasai1-asmlxpf43sd9"
+VERITAS_AI_MODEL = "gemini-2.0-pro-exp-02-05"
