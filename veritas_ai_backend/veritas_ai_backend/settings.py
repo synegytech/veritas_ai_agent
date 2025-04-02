@@ -138,7 +138,7 @@ REST_FRAMEWORK = {
 
 # Google AI Studio API key (from environment variable)
 GOOGLE_AI_API_KEY = os.environ.get(
-    "GOOGLE_AI_API_KEY", "AIzaSyBqX1fXO1PAIjjhiEp6EMMcjgpMwdDqYiQ"
+    "GOOGLE_AI_API_KEY", "AIzaSyB0Y6TglQ77lG4Z36VCBtpMfe4AFyfh86g"
 )
 
 
