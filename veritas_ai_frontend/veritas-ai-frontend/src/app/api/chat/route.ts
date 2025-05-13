@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const body: BackendPromptRequest = await request.json();
 
     // Forward the request to the Django backend
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL}/generate/`;
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL}generate/`;
 
     const response = await fetch(backendUrl, {
       method: "POST",

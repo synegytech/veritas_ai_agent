@@ -1,72 +1,497 @@
-project_name: veritas_ai_backend
-code_type: backend
-language: python
-framework: django
-description: |
-  Generate the Django backend code for the "veritas_ai_backend" project.
-  This backend will serve as an API to interface with Google AI Studio APIs, specifically for generative AI models like Gemini Pro.
-  The backend should expose an API endpoint that:
-    - Receives text prompts from a frontend application.
-    - Uses the `genai` library to interact with Google AI Studio APIs.
-    - Sends the generated text response back to the frontend in JSON format.
-    - sample snippet ```
-                from google import genai
+I have this project that uses django on the backend or more specifically django rest framework, i want to change the backend to use fastapi.
 
-        client = genai.Client(api_key="YOUR_API_KEY")
+this is the projects code
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents="Explain how AI works",
+```
+ai_helpers.py
+# ai_helpers.py
+
+import logging
+import os
+from google.genai import (
+    types,
+    client as genai_client,
+)  # Renamed client import to avoid confusion
+
+logger = logging.getLogger(__name__)
+
+# --- Moved Content ---
+# Define the long hardcoded text as a constant for clarity
+VERITAS_MODEL_PREAMBLE_TEXT = """Okay, I've reviewed the text you provided. Here's a summary of the key information about Veritas University, Abuja, along with answers to potential questions a user might have, presented in a respectful and informative way:
+
+**About Veritas University, Abuja (VUA)**
+
+*   **Overview:** Veritas University is a private university located in Bwari Area Council, Abuja, Nigeria.  It was founded by the Catholic Bishops Conference of Nigeria in 2002 and emphasizes a holistic education combining academics, moral values, and Christian principles.  It's often referred to as the Catholic University of Nigeria.
+*   **Mission:** To provide an integral and holistic education, blending academic and professional training with moral, spiritual, and cultural development, rooted in Catholic teachings.  The university is committed to research, truth-seeking, and producing graduates who contribute positively to society.
+*   **Vision:** To be a dynamic community fostering academic excellence and contributing to the advancement of Nigeria, ranking among the best universities globally.
+*   **Core Values:** Hard work, integrity, discipline, creativity, and dedication to Catholic principles.
+*   **Philosophy:** All knowledge originates from God and is for the service of humanity. The university promotes the highest standards of teaching, research, and community service.
+*   **History:**
+    *   Founded in March 2002 by the Catholic Bishops Conference of Nigeria.
+    *   Received provisional operation license in 2007.
+    *   Started admitting students in October 2008 at a temporary campus in Obehie, Abia State.
+    *   Moved to its permanent campus in Bwari, Abuja, in 2014.
+
+**Key Information and Potential Questions & Answers:**
+
+*   **Q: When is the resumption date for the 2024/2025 academic session?**
+
+    *   **A:**  There has been a change in the resumption dates.
+        *   **100-level students:** Monday, October 7th, 2024.
+        *   **Returning students (200-500 level):** Saturday, October 12th, 2024.
+        *   The university apologizes for any inconvenience caused by this change.
+
+*   **Q: What documents do fresh (new) students need to bring for resumption?**
+
+    *   **A:** Fresh students (UTME, Direct Entry, and Transfer) need four (4) photocopies of each of the following:
+        1.  UTME result slip
+        2.  O' Level Result(s) (WAEC/NECO/NABTEB, etc.)
+        3.  Veritas University admission letter
+        4.  Birth certificate/evidence of age
+        5.  Attestation letter
+        6.  Sponsorship letter
+        7.  Medical fitness report
+        8.  Evidence of State of origin
+        9.  Original O' Level certificate (if available)
+        10. Evidence of Change of Institution to Veritas University (for those who didn't initially choose Veritas as their first choice)
+        11. JAMB Admission Letter
+        12. Transcript (for transfer students only)
+        13. Evidence of transfer fee (for transfer students only)
+    *   **Important Notes for Freshers:**
+        *   Students with awaiting results or who didn't choose Veritas as their first choice *must* visit a JAMB CBT center to change their institution and upload their O' Level results *before* resumption.
+        *   Transfer students must also visit a CBT center to regularize their admission and submit an indemnity form to the Vice-Chancellor's office.
+
+*   **Q: How can I contact Veritas University regarding admission inquiries?**
+
+    *   **A:** You can contact the following individuals:
+        1.  Rev. Fr. Dr. Peter Bakwaph: 08039398830 (Chairman, Admission Committee)
+        2.  Mr. Ilya Cephas: 07086858143
+        3.  Dr. Adidi Dokpesi: 08138605055
+    *   **Crucially:** The university warns against fraudsters. Do *not* interact with any phone numbers not explicitly listed on the official website (www.veritas.edu.ng). They do *not* offer admissions or accept payments through third parties.
+
+*   **Q: What is the official website of Veritas University?**
+
+    *   **A:** The official website is [www.veritas.edu.ng](http://www.veritas.edu.ng/).
+
+*   **Q: What is the motto of Veritas University?**
+
+    *   **A:** The motto is \"Seeking the Truth.\"
+
+*   **Q: Who is the Vice-Chancellor of Veritas University?**
+
+    *   **A:** The Vice-Chancellor is Prof. Hyacinth E. Ichoku.
+
+* **Q: Who is the Registrar of Veritas University?**
+    *   **A:** Dr. Mrs. Stella Chizoba Okonkwo
+
+*   **Q: Where is Veritas University located?**
+
+    *   **A:** The university is located in the Bwari Area Council of the Federal Capital Territory, Abuja, Nigeria.
+
+*   **Q: What are some recent achievements of Veritas University?**
+
+    *   **A:**
+        *   Ranked among the top 11 universities in Nigeria in the 2023 Times Higher Education (THE) Impact Rankings.
+        *   Adopted by the African Development Bank (AfDB) as a Centre of Excellence for Computer Coding.
+        *   Offers free digital skills training to young Nigerians in Abuja.
+        *   Successfully represented Africa in a global universities debate competition.
+        * had it 13th convocation ceremony.
+
+*   **Q: What is the Veritas University Endowment Foundation?**
+
+    *   **A:** It's a philanthropic initiative of the Catholic Bishops Conference of Nigeria to create a self-sustaining, faith-based, and value-centered university. It accepts donations and endowments to support scholarships, infrastructure development, and research.
+
+* **Q:Does Veritas University have a focus on research?**
+        * A: Yes veritas university places a strong emphasis on research.
+
+* **Q:What are some of qualities expected from veritas university graduates?**
+       * A: Wide and ordered knowledge in an area of academic
+discipline ,The ability to reason logically,The ability to communicate clearly in speech and writing with
+confidence, Competence in numeric and computer literacy
+,Exhibition of such moral values as honesty, humility,
+truthfulness, love and high ethics in personal and professional
+life, Ready acceptance of obligations and responsibilities; and well
+developed interpersonal skills and capacity for team work.
+
+* **Q:What is the email for the school's bursar?**
+      *A: bursar@veritas.edu.ng
+
+I believe this comprehensively covers the information provided in the text, addressing likely questions in a clear, organized, and respectful manner. I have prioritized the most important information, especially regarding admissions and the resumption date changes.
+"""
+
+
+def build_veritas_chat_contents(
+    client: genai_client.Client, file_path: str, prompt: str
+) -> list[types.Content] | None:
+    """
+    Builds the 'contents' list for the Gemini API call, potentially uploading
+    the Veritas data file.
+
+    Args:
+        client: The initialized Google AI client.
+        file_path: The path to the Veritas data file.
+        prompt: The user's input prompt.
+
+    Returns:
+        A list of google.genai.types.Content objects for the API call,
+        or None if a critical error occurs during file upload.
+        Returns a simplified list if file upload fails but can proceed.
+    """
+    contents = []
+    try:
+        logger.info(f"Attempting to upload Veritas data file from {file_path}")
+        # Ensure the file exists before attempting upload within this function as well
+        if not os.path.exists(file_path):
+            logger.error(
+                f"Veritas data file confirmed missing at {file_path} during content build."
+            )
+            # Fallback to prompt-only mode if file is missing
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=prompt)],
+                ),
+            ]
+            return contents  # Return the simplified list
+
+        veritas_file = client.files.upload(file=file_path)
+        logger.info(
+            f"Successfully uploaded file: {veritas_file.name}, URI: {veritas_file.uri}"
         )
 
-        print(response.text)
-    ```
+        # Build contents with the uploaded file and preamble
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_uri(
+                        file_uri=veritas_file.uri,
+                        mime_type=veritas_file.mime_type,
+                    ),
+                    types.Part.from_text(
+                        text="This is some of the school's data"  # Context for the file
+                    ),
+                ],
+            ),
+            types.Content(
+                role="model",
+                parts=[
+                    types.Part.from_text(
+                        text=VERITAS_MODEL_PREAMBLE_TEXT
+                    )  # Use the constant
+                ],
+            ),
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_text(text=prompt),  # The actual user query
+                ],
+            ),
+        ]
+        return contents
 
-components:
-  - name: api_endpoint
-    description: API endpoint to interact with Google AI Studio.
-    functionality:
-      - receive_prompt:
-          description: Receives text prompts from the frontend via POST requests.
-          input_format: JSON, expecting a field named 'prompt'.
-      - call_google_ai_api:
-          description: Uses the `genai` library to call Google AI Studio API (e.g., Gemini Pro).
-          api_interaction: genai
-          model_suggestion: gemini-pro # Suggesting gemini-pro as discussed previously
-          api_key_management:
-            description: API key should be securely managed using Django settings and environment variables, NOT hardcoded.
-      - send_response:
-          description: Sends the generated text response back to the frontend in JSON format.
-          output_format: JSON, containing a field named 'response' with the generated text.
-    implementation_details:
-      - use_django_rest_framework: To build API views and handle requests/responses.
-      - error_handling: Implement basic error handling for API calls and invalid requests, returning appropriate HTTP status codes and error messages in JSON.
-      - settings_configuration: Include instructions to configure `settings.py` for API key management and Django REST Framework.
-      - urls_configuration: Define URLs for the API endpoint.
-      - views_implementation: Implement API view in `views.py` to handle logic.
+    except Exception as e:
+        logger.error(
+            f"Error uploading Veritas data file or building contents: {str(e)}"
+        )
+        logger.warning("Falling back to using only the user prompt for generation.")
+        # Fallback to just using the prompt if file upload fails
+        contents = [
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=prompt)],
+            ),
+        ]
+        return contents  # Return the simplified list even on error
 
-libraries_to_include:
-  - django
-  - djangorestframework
-  - genai
 
-output_format:
-  code_files:
-    - settings.py: Include necessary configurations (API key, REST framework).
-    - urls.py: Define API endpoint URLs.
-    - views.py: Implement API view logic to interact with Google AI Studio.
-    - serializers.py (optional): If data serialization is deemed necessary for request/response.
-    - models.py (likely empty for this API focused backend but include for completeness):  Placeholder for potential future models.
-  instructions: |
-    In addition to the code files, provide clear instructions on:
-      - Setting up Django project and app.
-      - Installing required libraries.
-      - Configuring environment variables for the Google API key.
-      - Running the Django development server.
-      - Testing the API endpoint (e.g., using curl or Postman).
 
-constraints:
-  - backend_only: Generate only the Django backend code, do not include frontend code.
-  - security_best_practices: Emphasize secure API key management (environment variables).
-  - clear_comments:  Code should be well-commented for clarity.
-  - functional_code: Generated code should be functional and runnable with minimal additional configuration (assuming API key and libraries are correctly set up).
+```
+
+
+```
+
+views.py 
+
+# Create your views here.
+"""
+Views for the AI API application.
+"""
+# views.py
+
+import logging
+import os
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.parsers import JSONParser
+from google import genai
+from google.genai import types
+
+# Local imports
+from .serializers import PromptSerializer, ResponseSerializer
+from .ai_helpers import build_veritas_chat_contents  # <-- Import the helper function
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Path to the Veritas data file - update this to the actual path on your server
+VERITAS_DATA_FILE_PATH = os.path.join(
+    settings.BASE_DIR, "veritas_data", "Veritas_data.pdf"
+)
+
+
+class GenerateTextView(APIView):
+    """
+    API endpoint that uses Google AI Studio's Gemini models to generate text.
+    Uses a pre-loaded Veritas University data file and processes user prompts.
+    """
+
+    parser_classes = (JSONParser,)
+
+    def post(self, request):
+        """
+        Process a prompt with the Veritas data and return AI-generated text.
+
+        Request body:
+            {
+                "prompt": "Text prompt to send to the AI model",
+                "model": "gemini-pro" (optional - use setting default),
+                "temperature": 1.0 (optional),
+                "top_p": 0.95 (optional),
+                "top_k": 64 (optional),
+                "max_output_tokens": 8192 (optional)
+            }
+        """
+        # Validate input data
+        serializer = PromptSerializer(data=request.data)
+        if not serializer.is_valid():
+            logger.warning(f"Invalid input received: {serializer.errors}")
+            return Response(
+                {"error": "Invalid input", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get prompt from validated data
+        prompt = serializer.validated_data.get("prompt", "")
+        if not prompt:
+            logger.warning("Request received with empty prompt.")
+            return Response(
+                {"error": "Prompt is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        model_name = serializer.validated_data.get(
+            "model",
+            settings.VERITAS_AI_MODEL,  # Ensure this setting exists
+        )
+        logger.info(f"Processing prompt for model: {model_name}")
+
+        # Check if API key is configured
+        api_key = settings.GOOGLE_AI_API_KEY  # Ensure this setting exists
+        if not api_key:
+            logger.error("Google AI API key is not configured in settings.")
+            return Response(
+                {"error": "Google AI API key is not configured."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # Check if the Veritas data file exists *before* attempting complex logic
+        # Note: The helper function also checks, providing redundancy.
+        if not os.path.exists(VERITAS_DATA_FILE_PATH):
+            logger.error(f"Veritas data file not found at {VERITAS_DATA_FILE_PATH}")
+            return Response(
+                {"error": "Required data file not found on the server."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            # Configure the client with API key
+            client = genai.Client(api_key=api_key)
+
+            # --- Use the helper function to build contents ---
+            contents = build_veritas_chat_contents(
+                client=client, file_path=VERITAS_DATA_FILE_PATH, prompt=prompt
+            )
+
+            # The helper function now handles fallback, so contents should always be a list.
+            # A check for None could be added if the helper might return it on critical failure.
+            # if contents is None:
+            #     logger.error("Failed to build chat contents critically.")
+            #     return Response(
+            #         {"error": "Failed to prepare data for AI model."},
+            #         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            #     )
+
+            # Configuration for generation
+            # Keep system instruction here as it's part of the generation config, not the history
+            system_instruction = [
+                types.Part.from_text(
+                    text="You are An AI chatbot for Veritas University Abuja. You will answer questions respectfully and give accurate answers based primarily on the provided document and context. If the answer isn't in the document or context, state that you don't have that specific information."
+                ),
+            ]
+            generate_content_config = types.GenerateContentConfig(
+                temperature=serializer.validated_data.get(
+                    "temperature", 0.9
+                ),  # Adjusted default temp
+                top_p=serializer.validated_data.get("top_p", 0.95),
+                top_k=serializer.validated_data.get("top_k", 64),
+                max_output_tokens=serializer.validated_data.get(
+                    "max_output_tokens", 8192
+                ),
+                response_mime_type="text/plain",
+                # system_instruction=system_instruction # Use if model supports it correctly
+            )
+
+            logger.info(
+                f"Sending request to Gemini model '{model_name}' with {len(contents)} content parts."
+            )
+            # Generate content - Pass system instruction if applicable/desired
+            # Note: System Instruction placement depends on the exact model and API version.
+            # Sometimes it's part of GenerateContentConfig, sometimes prepended to 'contents'.
+            # Check the genai library documentation for your specific model.
+            # For now, assuming it's in the config:
+            response_stream = client.models.generate_content_stream(
+                model=model_name,
+                contents=contents,
+                config=generate_content_config,
+                # If system_instruction should be part of contents:
+                # contents=[types.Content(parts=system_instruction, role='system')] + contents
+            )
+
+            response_text = ""
+            for chunk in response_stream:
+                # Add basic error handling for chunks if needed (e.g., chunk.prompt_feedback)
+                try:
+                    response_text += chunk.text
+                except ValueError:
+                    logger.warning(
+                        f"Received chunk without text, possibly finish reason: {chunk.candidates[0].finish_reason}"
+                    )
+                except Exception as chunk_err:
+                    logger.error(f"Error processing chunk: {chunk_err}")
+
+            # Prepare output data
+            output_data = {"response": response_text.strip(), "model": model_name}
+            logger.info(f"Successfully generated response from model {model_name}.")
+
+            # Serialize and return the response
+            response_serializer = ResponseSerializer(output_data)
+            return Response(response_serializer.data)
+
+        except ImportError as e:
+            logger.critical(f"Failed to import required libraries: {str(e)}")
+            return Response(
+                {
+                    "error": f"Server configuration error: Required libraries are not installed: {str(e)}"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except types.generation_types.BlockedPromptException as e:
+            logger.warning(f"Prompt blocked by API: {e}")
+            return Response(
+                {"error": "Request blocked due to safety concerns.", "details": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.exception(
+                f"An unexpected error occurred calling Google AI API: {str(e)}"
+            )  # Use exception for traceback
+            return Response(
+                {"error": f"Error communicating with the AI service."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,  # Use 503 for external service issues
+            )
+
+```
+
+
+```
+urls.py
+
+"""
+URL patterns for the AI API application.
+"""
+
+from django.urls import path
+from .views import GenerateTextView
+
+urlpatterns = [
+    path("generate/", GenerateTextView.as_view(), name="generate-text"),
+]
+
+
+
+```
+
+```
+serializers.py
+
+"""
+Serializers for the AI API application.
+"""
+
+from rest_framework import serializers
+
+
+class PromptSerializer(serializers.Serializer):
+    """
+    Serializer for the prompt input.
+    """
+
+    prompt = serializers.CharField(
+        required=True, help_text="The text prompt to send to the AI model"
+    )
+
+    # Optional parameters
+    model = serializers.CharField(
+        required=False,
+        help_text="The Gemini model to use (defaults to settings.DEFAULT_GEMINI_MODEL)",
+    )
+    temperature = serializers.FloatField(
+        required=False,
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Controls randomness in output (0.0 to 1.0)",
+    )
+    top_p = serializers.FloatField(
+        required=False,
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Nucleus sampling parameter (0.0 to 1.0)",
+    )
+    max_output_tokens = serializers.IntegerField(
+        required=False, min_value=1, help_text="Maximum number of tokens to generate"
+    )
+
+
+class ResponseSerializer(serializers.Serializer):
+    """
+    Serializer for the AI response output.
+    """
+
+    response = serializers.CharField(
+        help_text="The generated text response from the AI model"
+    )
+    model = serializers.CharField(help_text="The model used to generate the response")
+    prompt_tokens = serializers.IntegerField(
+        help_text="Number of tokens in the prompt", required=False
+    )
+    completion_tokens = serializers.IntegerField(
+        help_text="Number of tokens in the completion", required=False
+    )
+    total_tokens = serializers.IntegerField(
+        help_text="Total number of tokens used", required=False
+    )
+
+
+```
+
+
+
+
+
+
+
+
+
